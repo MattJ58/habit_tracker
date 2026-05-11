@@ -3,11 +3,7 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 
 import '../models/habit.dart';
-
-const _emptyCellColor = Color(0xFFF3F6F8);
-const _completeCellColor = Color(0xFF63C77A);
-const _emptyBorderColor = Color(0xFFE1E8EE);
-const _completeBorderColor = Color(0xFF55B66B);
+import '../theme/app_colors.dart';
 
 class HeatmapGrid extends StatelessWidget {
   const HeatmapGrid({required this.habit, super.key});
@@ -20,9 +16,13 @@ class HeatmapGrid extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        const columns = 10;
-        const gap = 7.0;
-        final cellSize = (constraints.maxWidth - gap * (columns - 1)) / columns;
+        const columns = 7;
+        final width = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : 320.0;
+        final gap = width < 320 ? 6.0 : 7.0;
+        final cellSize = (width - gap * (columns - 1)) / columns;
+        final today = _normalizeDate(DateTime.now());
 
         return Wrap(
           spacing: gap,
@@ -32,6 +32,7 @@ class HeatmapGrid extends StatelessWidget {
               _HeatmapCell(
                 day: day,
                 size: cellSize,
+                isToday: _isSameDate(day, today),
                 progress: habit.progressFor(day),
                 count: habit.completionsFor(day),
                 requiredCount: habit.requiredCompletionsPerDay,
@@ -53,10 +54,15 @@ class HeatmapGrid extends StatelessWidget {
   }
 }
 
+DateTime _normalizeDate(DateTime date) {
+  return DateTime(date.year, date.month, date.day);
+}
+
 class _HeatmapCell extends StatefulWidget {
   const _HeatmapCell({
     required this.day,
     required this.size,
+    required this.isToday,
     required this.progress,
     required this.count,
     required this.requiredCount,
@@ -64,6 +70,7 @@ class _HeatmapCell extends StatefulWidget {
 
   final DateTime day;
   final double size;
+  final bool isToday;
   final double progress;
   final int count;
   final int requiredCount;
@@ -107,14 +114,18 @@ class _HeatmapCellState extends State<_HeatmapCell> {
                   height: widget.size,
                   decoration: BoxDecoration(
                     color: _colorFor(widget.progress),
-                    borderRadius: BorderRadius.circular(9),
-                    border: Border.all(color: _borderColorFor(widget.progress)),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: _borderColorFor(widget.progress),
+                      width: widget.isToday ? 1.5 : 1,
+                    ),
                     boxShadow: widget.progress > 0
                         ? [
                             BoxShadow(
-                              color: _completeCellColor.withValues(
-                                alpha: 0.08 + widget.progress * 0.04,
-                              ),
+                              color: AppColors.progressColor(widget.progress)
+                                  .withValues(
+                                    alpha: 0.08 + widget.progress * 0.04,
+                                  ),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -163,12 +174,17 @@ class _HeatmapCellState extends State<_HeatmapCell> {
 
   Color _colorFor(double progress) {
     final amount = progress.clamp(0, 1).toDouble();
-    return Color.lerp(_emptyCellColor, _completeCellColor, amount)!;
+    if (amount == 0) {
+      return AppColors.zeroProgress;
+    }
+    return Color.lerp(AppColors.partial, AppColors.complete, amount)!;
   }
 
   Color _borderColorFor(double progress) {
-    final amount = progress.clamp(0, 1).toDouble();
-    return Color.lerp(_emptyBorderColor, _completeBorderColor, amount)!;
+    if (widget.isToday && progress <= 0) {
+      return AppColors.darkControl.withValues(alpha: 0.18);
+    }
+    return AppColors.progressBorderColor(progress);
   }
 }
 
@@ -192,11 +208,9 @@ class _HoverBubble extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
-            color: const Color(0xFF111111).withValues(alpha: 0.78),
+            color: AppColors.darkControl.withValues(alpha: 0.78),
             borderRadius: BorderRadius.circular(11),
-            border: Border.all(
-              color: CupertinoColors.white.withValues(alpha: 0.18),
-            ),
+            border: Border.all(color: AppColors.glassWhite(0.18)),
           ),
           child: Text(
             '${dateKey(day)}  $count/$requiredCount',
@@ -232,4 +246,10 @@ String _shortMonth(DateTime date) {
 
 String _readableDate(DateTime date) {
   return '${date.day} ${_shortMonth(date)} ${date.year}';
+}
+
+bool _isSameDate(DateTime first, DateTime second) {
+  return first.year == second.year &&
+      first.month == second.month &&
+      first.day == second.day;
 }

@@ -4,14 +4,15 @@ import 'package:flutter/cupertino.dart';
 
 import '../models/habit.dart';
 import '../services/habit_storage_service.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_layout.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/habit_card.dart';
 import '../widgets/liquid_background.dart';
 
-const _primaryTextColor = Color(0xFF111111);
-const _secondaryTextColor = Color(0xFF6E6E73);
-const _accentColor = Color(0xFF007AFF);
-const _softGreen = Color(0xFF63C77A);
+const _primaryTextColor = AppColors.primaryText;
+const _secondaryTextColor = AppColors.secondaryText;
+const _accentColor = AppColors.accent;
 
 DateTime _normalizeDate(DateTime date) {
   return DateTime(date.year, date.month, date.day);
@@ -142,8 +143,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final size = mediaQuery.size;
+    final bottomSafeArea = mediaQuery.viewPadding.bottom;
+    final horizontalPadding = AppLayout.horizontalPaddingFor(size.width);
+    final navBottom = AppLayout.bottomNavBottomOffset(bottomSafeArea);
+    final fabBottom = AppLayout.fabBottomOffset(bottomSafeArea);
+    final contentBottomPadding = AppLayout.scrollBottomPadding(bottomSafeArea);
+    final emptyStateBottomPadding =
+        navBottom + AppLayout.bottomNavHeight + AppLayout.spacingLg;
+
     return CupertinoPageScaffold(
-      backgroundColor: const Color(0xFFF3F5F9),
+      backgroundColor: AppColors.background,
       child: LiquidBackground(
         child: SafeArea(
           bottom: false,
@@ -156,13 +167,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 slivers: [
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 22, 24, 12),
-                      child: _Header(
-                        habitCount: _habits.length,
-                        isDashboard: _isDashboard,
-                        selectedDate: _selectedTodayDate,
-                        onPreviousDay: _goToPreviousTodayDate,
-                        onNextDay: _goToNextTodayDate,
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        AppLayout.topPaddingFor(size.height),
+                        horizontalPadding,
+                        AppLayout.headerBottomPaddingFor(size.height),
+                      ),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxWidth: AppLayout.maxContentWidth,
+                          ),
+                          child: _Header(
+                            habitCount: _habits.length,
+                            isDashboard: _isDashboard,
+                            selectedDate: _selectedTodayDate,
+                            onPreviousDay: _goToPreviousTodayDate,
+                            onNextDay: _goToNextTodayDate,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -176,60 +199,96 @@ class _HomeScreenState extends State<HomeScreen> {
                     SliverFillRemaining(
                       hasScrollBody: false,
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 24, 24, 158),
-                        child: Center(child: _EmptyState(onAdd: _showAddSheet)),
+                        padding: EdgeInsets.fromLTRB(
+                          horizontalPadding,
+                          AppLayout.spacingLg,
+                          horizontalPadding,
+                          emptyStateBottomPadding,
+                        ),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: AppLayout.maxContentWidth,
+                            ),
+                            child: _EmptyState(onAdd: _showAddSheet),
+                          ),
+                        ),
                       ),
                     )
                   else
                     SliverToBoxAdapter(
                       child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 240),
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeOutCubic,
+                        duration: const Duration(milliseconds: 280),
+                        switchInCurve: Curves.easeInOutCubic,
+                        switchOutCurve: Curves.easeInOutCubic,
                         transitionBuilder: (child, animation) {
+                          final curvedAnimation = CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeInOutCubic,
+                          );
                           final offset = Tween<Offset>(
-                            begin: const Offset(0.04, 0),
+                            begin: const Offset(0.025, 0.01),
                             end: Offset.zero,
-                          ).animate(animation);
+                          ).animate(curvedAnimation);
+                          final scale = Tween<double>(
+                            begin: 0.985,
+                            end: 1,
+                          ).animate(curvedAnimation);
 
                           return FadeTransition(
-                            opacity: animation,
-                            child: SlideTransition(
-                              position: offset,
-                              child: child,
+                            opacity: curvedAnimation,
+                            child: ScaleTransition(
+                              scale: scale,
+                              child: SlideTransition(
+                                position: offset,
+                                child: child,
+                              ),
                             ),
                           );
                         },
                         child: Padding(
                           key: ValueKey(_selectedView),
-                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 158),
-                          child: Column(
-                            children: [
-                              for (
-                                var index = 0;
-                                index < _habits.length;
-                                index++
-                              )
-                                _HabitListItem(
-                                  habit: _habits[index],
-                                  index: index,
-                                  isDashboard: _isDashboard,
-                                  onDelete: () => _deleteHabit(_habits[index]),
-                                  onConfirmDelete: () =>
-                                      _confirmDeleteHabit(_habits[index]),
-                                  onIncrementToday: () =>
-                                      _incrementHabitOnDate(
-                                        _habits[index],
-                                        _selectedTodayDate,
-                                      ),
-                                  onDecrementToday: () =>
-                                      _decrementHabitOnDate(
-                                        _habits[index],
-                                        _selectedTodayDate,
-                                      ),
-                                  selectedDate: _selectedTodayDate,
-                                ),
-                            ],
+                          padding: EdgeInsets.fromLTRB(
+                            horizontalPadding,
+                            AppLayout.spacingXs,
+                            horizontalPadding,
+                            contentBottomPadding,
+                          ),
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                maxWidth: AppLayout.maxContentWidth,
+                              ),
+                              child: Column(
+                                children: [
+                                  for (
+                                    var index = 0;
+                                    index < _habits.length;
+                                    index++
+                                  )
+                                    _HabitListItem(
+                                      habit: _habits[index],
+                                      index: index,
+                                      isDashboard: _isDashboard,
+                                      onDelete: () =>
+                                          _deleteHabit(_habits[index]),
+                                      onConfirmDelete: () =>
+                                          _confirmDeleteHabit(_habits[index]),
+                                      onIncrementToday: () =>
+                                          _incrementHabitOnDate(
+                                            _habits[index],
+                                            _selectedTodayDate,
+                                          ),
+                                      onDecrementToday: () =>
+                                          _decrementHabitOnDate(
+                                            _habits[index],
+                                            _selectedTodayDate,
+                                          ),
+                                      selectedDate: _selectedTodayDate,
+                                    ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -237,24 +296,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               Positioned(
-                right: 22,
-                bottom: 124,
+                right: horizontalPadding,
+                bottom: fabBottom,
                 child: _AddHabitButton(onPressed: _showAddSheet),
               ),
               Positioned(
-                left: 20,
-                right: 20,
-                bottom: 12,
-                child: SafeArea(
-                  top: false,
-                  child: _ViewSwitcher(
-                    selectedView: _selectedView,
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _selectedView = value);
-                      }
-                    },
-                  ),
+                left: horizontalPadding,
+                right: horizontalPadding,
+                bottom: navBottom,
+                child: _ViewSwitcher(
+                  selectedView: _selectedView,
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _selectedView = value);
+                    }
+                  },
                 ),
               ),
             ],
@@ -312,92 +368,129 @@ class _Header extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: isDashboard
           ? [
-              const Text(
-                'Habit Tracker',
-                style: TextStyle(
-                  color: _primaryTextColor,
-                  fontSize: 34,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                habitCount == 1 ? '1 habit' : '$habitCount habits',
-                style: const TextStyle(
-                  color: _secondaryTextColor,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ]
-          : [
-              const Text(
-                'Habit Tracker',
-                style: TextStyle(
-                  color: _primaryTextColor,
-                  fontSize: 34,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0,
-                ),
-              ),
-              const SizedBox(height: 18),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: _DayNavButton(
-                        icon: CupertinoIcons.chevron_left,
-                        onPressed: onPreviousDay,
-                        isEnabled: true,
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 118,
+                  const Expanded(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${selectedDate.day}',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          'Habit Tracker',
+                          style: TextStyle(
                             color: _primaryTextColor,
-                            fontSize: 56,
-                            fontWeight: FontWeight.w900,
-                            height: 0.95,
+                            fontSize: 33,
+                            fontWeight: FontWeight.w800,
                             letterSpacing: 0,
+                            height: 1.04,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: 7),
                         Text(
-                          _todayDateLabel(selectedDate),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          'Ultime 4 settimane',
+                          style: TextStyle(
                             color: _secondaryTextColor,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
                             letterSpacing: 0,
                           ),
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(width: 14),
+                  _HabitCountPill(habitCount: habitCount),
+                ],
+              ),
+            ]
+          : [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _DayNavButton(
+                    icon: CupertinoIcons.chevron_left,
+                    onPressed: onPreviousDay,
+                    isEnabled: true,
+                  ),
                   Expanded(
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: _DayNavButton(
-                        icon: CupertinoIcons.chevron_right,
-                        onPressed: onNextDay,
-                        isEnabled: canGoNext,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          _todayTitleLabel(selectedDate),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: _primaryTextColor,
+                            fontSize: 31,
+                            fontWeight: FontWeight.w800,
+                            height: 1.02,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            _todayDateLabel(selectedDate),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            style: const TextStyle(
+                              color: _secondaryTextColor,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
+                  _DayNavButton(
+                    icon: CupertinoIcons.chevron_right,
+                    onPressed: onNextDay,
+                    isEnabled: canGoNext,
                   ),
                 ],
               ),
             ],
+    );
+  }
+}
+
+class _HabitCountPill extends StatelessWidget {
+  const _HabitCountPill({required this.habitCount});
+
+  final int habitCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = habitCount == 1 ? '1 habit' : '$habitCount habits';
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppColors.glassWhite(0.4),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: AppColors.glassWhite(0.62)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              label,
+              maxLines: 1,
+              style: const TextStyle(
+                color: _primaryTextColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -418,23 +511,27 @@ class _DayNavButton extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: isEnabled ? onPressed : null,
-      child: AnimatedOpacity(
-        duration: const Duration(milliseconds: 160),
-        opacity: isEnabled ? 1 : 0.34,
-        child: ClipOval(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: CupertinoColors.white.withValues(alpha: 0.46),
-                border: Border.all(
-                  color: CupertinoColors.white.withValues(alpha: 0.7),
+      child: SizedBox(
+        width: 50,
+        height: 50,
+        child: Center(
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 160),
+            opacity: isEnabled ? 1 : 0.28,
+            child: ClipOval(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.glassWhite(0.34),
+                    border: Border.all(color: AppColors.glassWhite(0.56)),
+                  ),
+                  child: Icon(icon, color: _primaryTextColor, size: 18),
                 ),
               ),
-              child: Icon(icon, color: _primaryTextColor, size: 20),
             ),
           ),
         ),
@@ -443,30 +540,50 @@ class _DayNavButton extends StatelessWidget {
   }
 }
 
+String _todayTitleLabel(DateTime date) {
+  if (_isSameDay(date, DateTime.now())) {
+    return 'Oggi';
+  }
+  return _weekdayName(date);
+}
+
+String _weekdayName(DateTime date) {
+  const weekdays = [
+    'Lunedi',
+    'Martedi',
+    'Mercoledi',
+    'Giovedi',
+    'Venerdi',
+    'Sabato',
+    'Domenica',
+  ];
+  return weekdays[date.weekday - 1];
+}
+
 String _monthName(DateTime date) {
   const months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
+    'gennaio',
+    'febbraio',
+    'marzo',
+    'aprile',
+    'maggio',
+    'giugno',
+    'luglio',
+    'agosto',
+    'settembre',
+    'ottobre',
+    'novembre',
+    'dicembre',
   ];
   return months[date.month - 1];
 }
 
 String _todayDateLabel(DateTime date) {
-  final label = '${_monthName(date)} ${date.year}';
+  final label = '${date.day} ${_monthName(date)} ${date.year}';
   if (_isSameDay(date, DateTime.now())) {
-    return '$label  today';
+    return '$label  oggi';
   }
-  return label;
+  return '${_weekdayName(date)}, $label';
 }
 
 class _ViewSwitcher extends StatelessWidget {
@@ -479,29 +596,29 @@ class _ViewSwitcher extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 390),
+        constraints: const BoxConstraints(
+          maxWidth: AppLayout.bottomNavMaxWidth,
+        ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(34),
+          borderRadius: BorderRadius.circular(AppLayout.bottomNavRadius),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
             child: Container(
-              height: 76,
-              padding: const EdgeInsets.all(7),
+              height: AppLayout.bottomNavHeight,
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
-                color: CupertinoColors.white.withValues(alpha: 0.42),
-                borderRadius: BorderRadius.circular(34),
-                border: Border.all(
-                  color: CupertinoColors.white.withValues(alpha: 0.54),
-                ),
+                color: AppColors.glassWhite(0.44),
+                borderRadius: BorderRadius.circular(AppLayout.bottomNavRadius),
+                border: Border.all(color: AppColors.glassWhite(0.58)),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF30415E).withValues(alpha: 0.12),
-                    blurRadius: 36,
+                    color: AppColors.panelShadow.withValues(alpha: 0.1),
+                    blurRadius: 32,
                     spreadRadius: -8,
-                    offset: const Offset(0, 22),
+                    offset: const Offset(0, 20),
                   ),
                   BoxShadow(
-                    color: CupertinoColors.white.withValues(alpha: 0.28),
+                    color: AppColors.glassWhite(0.28),
                     blurRadius: 12,
                     offset: const Offset(0, -2),
                   ),
@@ -518,7 +635,7 @@ class _ViewSwitcher extends StatelessWidget {
                             ? Alignment.centerLeft
                             : Alignment.centerRight,
                         duration: const Duration(milliseconds: 280),
-                        curve: Curves.easeOutCubic,
+                        curve: Curves.easeInOutCubic,
                         child: _ActiveNavPill(width: itemWidth),
                       ),
                       Row(
@@ -564,26 +681,21 @@ class _ActiveNavPill extends StatelessWidget {
       width: width,
       height: double.infinity,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(29),
+        borderRadius: BorderRadius.circular(AppLayout.bottomNavRadius - 5),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            CupertinoColors.white.withValues(alpha: 0.28),
-            CupertinoColors.white.withValues(alpha: 0.18),
-          ],
+          colors: [AppColors.glassWhite(0.26), AppColors.glassWhite(0.16)],
         ),
-        border: Border.all(
-          color: CupertinoColors.white.withValues(alpha: 0.5),
-        ),
+        border: Border.all(color: AppColors.glassWhite(0.46)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF30415E).withValues(alpha: 0.08),
+            color: AppColors.panelShadow.withValues(alpha: 0.08),
             blurRadius: 16,
             offset: const Offset(0, 10),
           ),
           BoxShadow(
-            color: CupertinoColors.white.withValues(alpha: 0.14),
+            color: AppColors.glassWhite(0.14),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -593,7 +705,7 @@ class _ActiveNavPill extends StatelessWidget {
   }
 }
 
-class _NavItem extends StatelessWidget {
+class _NavItem extends StatefulWidget {
   const _NavItem({
     required this.icon,
     required this.label,
@@ -607,36 +719,46 @@ class _NavItem extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_NavItem> createState() => _NavItemState();
+}
+
+class _NavItemState extends State<_NavItem> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    final color = isActive
-        ? const Color(0xAD111111)
-        : const Color(0xAD6E6E73);
+    final color = widget.isActive ? AppColors.navActive : AppColors.navInactive;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _pressed ? 0.96 : 1,
+        duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             AnimatedScale(
-              scale: isActive ? 1.06 : 1,
+              scale: widget.isActive ? 1.04 : 1,
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOutCubic,
-              child: Icon(icon, size: 22, color: color),
+              child: Icon(widget.icon, size: 21, color: color),
             ),
             const SizedBox(height: 4),
-            Text(
-              label,
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
               style: TextStyle(
                 color: color,
                 fontSize: 11,
-                fontWeight: isActive ? FontWeight.w800 : FontWeight.w700,
+                fontWeight: widget.isActive ? FontWeight.w800 : FontWeight.w700,
                 letterSpacing: 0,
               ),
+              child: Text(widget.label),
             ),
           ],
         ),
@@ -730,6 +852,9 @@ class _TodayHabitTileState extends State<_TodayHabitTile> {
     final required = widget.habit.requiredCompletionsPerDay;
     final progress = widget.habit.progressFor(widget.selectedDate);
     final isComplete = progress >= 1;
+    final isPartial = progress > 0 && !isComplete;
+    final progressColor = AppColors.progressTextColor(progress);
+    final statusLabel = _todayStatusLabel(count, required, progress);
 
     return GestureDetector(
       onLongPress: widget.onLongPress,
@@ -739,15 +864,22 @@ class _TodayHabitTileState extends State<_TodayHabitTile> {
       onTap: isComplete ? null : widget.onIncrement,
       child: AnimatedScale(
         scale: _pressed ? 0.985 : 1,
-        duration: const Duration(milliseconds: 140),
+        duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
         child: GlassPanel(
-          margin: const EdgeInsets.only(bottom: 14),
-          borderRadius: 24,
-          padding: const EdgeInsets.all(18),
-          opacity: 0.56,
-          blur: 30,
+          margin: const EdgeInsets.only(bottom: AppLayout.cardSpacing),
+          borderRadius: AppLayout.cardRadius,
+          padding: AppLayout.todayCardPadding,
+          opacity: isComplete ? 0.66 : 0.6,
+          blur: 32,
+          shadowOpacity: isComplete ? 0.08 : (isPartial ? 0.065 : 0.055),
+          shadowBlur: isComplete ? 32 : 28,
+          shadowOffset: const Offset(0, 14),
+          borderOpacity: isComplete ? 0.74 : 0.64,
+          animationDuration: const Duration(milliseconds: 240),
+          animationCurve: Curves.easeOutCubic,
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
                 child: Column(
@@ -759,31 +891,28 @@ class _TodayHabitTileState extends State<_TodayHabitTile> {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: _primaryTextColor,
-                        fontSize: 21,
+                        fontSize: 20,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0,
+                        height: 1.12,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '$count / $required',
-                      style: TextStyle(
-                        color: isComplete
-                            ? const Color(0xFF2F7D46)
-                            : _secondaryTextColor,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 9),
+                    _TodayStatusLine(label: statusLabel, color: progressColor),
+                    const SizedBox(height: 11),
                     _ProgressBar(progress: progress),
                   ],
                 ),
               ),
-              const SizedBox(width: 18),
+              const SizedBox(width: 14),
               Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _IncrementButton(isComplete: isComplete),
+                  _IncrementButton(
+                    progress: progress,
+                    isComplete: isComplete,
+                    isPressed: _pressed,
+                  ),
                   const SizedBox(height: 8),
                   _DecrementButton(
                     isEnabled: count > 0,
@@ -799,6 +928,50 @@ class _TodayHabitTileState extends State<_TodayHabitTile> {
   }
 }
 
+class _TodayStatusLine extends StatelessWidget {
+  const _TodayStatusLine({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 7),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: color,
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0,
+            height: 1,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _todayStatusLabel(int count, int required, double progress) {
+  if (progress >= 1) {
+    return 'Completato';
+  }
+  if (count > 0) {
+    return 'Parziale $count / $required';
+  }
+  return 'Da iniziare';
+}
+
 class _ProgressBar extends StatelessWidget {
   const _ProgressBar({required this.progress});
 
@@ -806,82 +979,135 @@ class _ProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final clampedProgress = progress.clamp(0, 1).toDouble();
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(999),
-      child: Stack(
-        children: [
-          Container(
-            height: 8,
-            decoration: BoxDecoration(
-              color: CupertinoColors.white.withValues(alpha: 0.56),
-            ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.zeroProgress.withValues(alpha: 0.72),
+          border: Border.all(color: AppColors.glassWhite(0.62), width: 1),
+        ),
+        child: SizedBox(
+          height: 9,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: clampedProgress),
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, child) {
+              return FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: value,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: AppColors.progressGradient(clampedProgress),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.progressColor(
+                          clampedProgress,
+                        ).withValues(alpha: 0.22),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
-          FractionallySizedBox(
-            widthFactor: progress.clamp(0, 1),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 260),
-              curve: Curves.easeOutCubic,
-              height: 8,
-              decoration: const BoxDecoration(color: _softGreen),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
 class _IncrementButton extends StatelessWidget {
-  const _IncrementButton({required this.isComplete});
+  const _IncrementButton({
+    required this.progress,
+    required this.isComplete,
+    required this.isPressed,
+  });
 
+  final double progress;
   final bool isComplete;
+  final bool isPressed;
 
   @override
   Widget build(BuildContext context) {
-    final buttonColor = isComplete ? _softGreen : const Color(0xFF111111);
+    final clampedProgress = progress.clamp(0, 1).toDouble();
+    final buttonColor = clampedProgress == 0
+        ? AppColors.darkControl
+        : AppColors.progressColor(clampedProgress);
+    final iconColor = clampedProgress == 0 || isComplete
+        ? CupertinoColors.white
+        : AppColors.primaryText;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
+    return AnimatedScale(
+      scale: isPressed ? 0.94 : 1,
+      duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
-      width: 54,
-      height: 54,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: buttonColor.withValues(alpha: 0.22),
-            blurRadius: 24,
-            offset: const Offset(0, 14),
-          ),
-          BoxShadow(
-            color: CupertinoColors.white.withValues(alpha: 0.14),
-            blurRadius: 9,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: ClipOval(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  buttonColor.withValues(alpha: isComplete ? 0.76 : 0.82),
-                  buttonColor.withValues(alpha: isComplete ? 0.52 : 0.62),
-                ],
-              ),
-              border: Border.all(
-                color: CupertinoColors.white.withValues(alpha: 0.36),
-              ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: buttonColor.withValues(alpha: isPressed ? 0.12 : 0.2),
+              blurRadius: isPressed ? 14 : 20,
+              spreadRadius: -2,
+              offset: const Offset(0, 10),
             ),
-            child: Icon(
-              isComplete ? CupertinoIcons.check_mark : CupertinoIcons.add,
-              color: CupertinoColors.white,
-              size: 25,
+            BoxShadow(
+              color: AppColors.glassWhite(0.18),
+              blurRadius: 9,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: ClipOval(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    buttonColor.withValues(
+                      alpha: clampedProgress == 0 ? 0.9 : 0.78,
+                    ),
+                    buttonColor.withValues(
+                      alpha: clampedProgress == 0 ? 0.72 : 0.56,
+                    ),
+                  ],
+                ),
+                border: Border.all(color: AppColors.glassWhite(0.42)),
+              ),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInOutCubic,
+                transitionBuilder: (child, animation) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: ScaleTransition(scale: animation, child: child),
+                  );
+                },
+                child: Icon(
+                  isComplete ? CupertinoIcons.check_mark : CupertinoIcons.add,
+                  key: ValueKey(isComplete),
+                  color: iconColor,
+                  size: 24,
+                ),
+              ),
             ),
           ),
         ),
@@ -913,22 +1139,22 @@ class _DecrementButtonState extends State<_DecrementButton> {
       onTap: widget.isEnabled ? widget.onPressed : () {},
       child: AnimatedScale(
         scale: _pressed ? 0.92 : 1,
-        duration: const Duration(milliseconds: 130),
+        duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
-          width: 38,
-          height: 38,
+          width: 46,
+          height: 46,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF111111).withValues(
-                  alpha: widget.isEnabled ? 0.1 : 0.04,
+                color: AppColors.darkControl.withValues(
+                  alpha: widget.isEnabled ? 0.08 : 0.03,
                 ),
                 blurRadius: 14,
-                offset: const Offset(0, 8),
+                offset: const Offset(0, 7),
               ),
             ],
           ),
@@ -938,21 +1164,17 @@ class _DecrementButtonState extends State<_DecrementButton> {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: CupertinoColors.white.withValues(
-                    alpha: widget.isEnabled ? 0.48 : 0.24,
-                  ),
+                  color: AppColors.glassWhite(widget.isEnabled ? 0.54 : 0.26),
                   border: Border.all(
-                    color: CupertinoColors.white.withValues(
-                      alpha: widget.isEnabled ? 0.76 : 0.46,
-                    ),
+                    color: AppColors.glassWhite(widget.isEnabled ? 0.78 : 0.46),
                   ),
                 ),
                 child: Icon(
                   CupertinoIcons.minus,
                   color: widget.isEnabled
-                      ? _primaryTextColor
-                      : _secondaryTextColor.withValues(alpha: 0.48),
-                  size: 19,
+                      ? AppColors.primaryText
+                      : AppColors.secondaryText.withValues(alpha: 0.48),
+                  size: 18,
                 ),
               ),
             ),
@@ -978,30 +1200,31 @@ class _AddHabitButtonState extends State<_AddHabitButton> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _pressed = true),
       onTapCancel: () => setState(() => _pressed = false),
       onTapUp: (_) => setState(() => _pressed = false),
       onTap: widget.onPressed,
       child: AnimatedScale(
         scale: _pressed ? 0.91 : 1,
-        duration: const Duration(milliseconds: 150),
+        duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
         child: Container(
-          width: 64,
-          height: 64,
+          width: AppLayout.fabSize,
+          height: AppLayout.fabSize,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF111111).withValues(alpha: 0.24),
-                blurRadius: 30,
+                color: AppColors.darkControl.withValues(alpha: 0.18),
+                blurRadius: 26,
                 spreadRadius: -4,
-                offset: const Offset(0, 16),
+                offset: const Offset(0, 14),
               ),
               BoxShadow(
-                color: const Color(0xFF8AB89B).withValues(alpha: 0.16),
-                blurRadius: 26,
-                offset: const Offset(0, 8),
+                color: AppColors.complete.withValues(alpha: 0.1),
+                blurRadius: 22,
+                offset: const Offset(0, 7),
               ),
             ],
           ),
@@ -1015,18 +1238,16 @@ class _AddHabitButtonState extends State<_AddHabitButton> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      const Color(0xFF111111).withValues(alpha: 0.9),
-                      const Color(0xFF111111).withValues(alpha: 0.72),
+                      AppColors.darkControl.withValues(alpha: 0.9),
+                      AppColors.darkControl.withValues(alpha: 0.72),
                     ],
                   ),
-                  border: Border.all(
-                    color: CupertinoColors.white.withValues(alpha: 0.26),
-                  ),
+                  border: Border.all(color: AppColors.glassWhite(0.26)),
                 ),
                 child: const Icon(
                   CupertinoIcons.add,
                   color: CupertinoColors.white,
-                  size: 30,
+                  size: 28,
                 ),
               ),
             ),
@@ -1122,9 +1343,9 @@ class _AddHabitSheetState extends State<_AddHabitSheet> {
                           width: 42,
                           height: 5,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF8E8E93).withValues(
-                              alpha: 0.28,
-                            ),
+                            color: const Color(
+                              0xFF8E8E93,
+                            ).withValues(alpha: 0.28),
                             borderRadius: BorderRadius.circular(999),
                           ),
                         ),
@@ -1266,7 +1487,7 @@ class _AddHabitSheetState extends State<_AddHabitSheet> {
                                             fontWeight: FontWeight.w700,
                                           ),
                                         ),
-                                )
+                                ),
                               ),
                             ),
                           ),
@@ -1414,9 +1635,9 @@ class _DeleteBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: AppLayout.cardSpacing),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(AppLayout.cardRadius - 4),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
           child: Container(
@@ -1424,7 +1645,7 @@ class _DeleteBackground extends StatelessWidget {
             padding: const EdgeInsets.only(right: 22),
             decoration: BoxDecoration(
               color: const Color(0xFFFF3B30).withValues(alpha: 0.78),
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(AppLayout.cardRadius - 4),
               border: Border.all(
                 color: CupertinoColors.white.withValues(alpha: 0.38),
               ),
